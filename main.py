@@ -4,6 +4,44 @@ import threading
 import random
 import os
 from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+
+# Simple HTTP Server for Port 4000
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b"RAJ MISHRA CONVO SERVER IS RUNNING")
+        elif self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = {
+                "status": "running",
+                "service": "facebook_messenger_bot", 
+                "message": "RAJ MISHRA CONVO SERVER IS RUNNING",
+                "timestamp": datetime.now().isoformat()
+            }
+            self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        # Server logs suppress karta hoon taaki spam na ho
+        pass
+
+def run_health_server():
+    """Port 4000 pe simple HTTP server chalta hai"""
+    try:
+        server = HTTPServer(('0.0.0.0', 4000), HealthHandler)
+        print("🌐 Health Server Started: Port 4000 | Response: 'RAJ MISHRA CONVO SERVER IS RUNNING'")
+        server.serve_forever()
+    except Exception as e:
+        print(f"❌ Health server error: {e}")
 
 class FacebookMessengerBot:
     def __init__(self):
@@ -117,16 +155,14 @@ class FacebookMessengerBot:
                 monitor_count += 1
                 
                 # BetterStack/UptimeRobot ke liye monitor URL
-                # YEH LINE COPY KARKE BETTERSTACK/UPTIMEROBOT MEIN DALNA HAI
-                print(f"🔔 MONITOR_URL: https://your-app-name.onrender.com/health")
+                print(f"🔔 MONITOR_URL: https://your-app-name.onrender.com")
                 print(f"📊 Stats: {self.total_messages_sent} total messages | {self.cycle_count} cycles")
                 
-                # Health status display karta hai (200-599 ke beech random nahi, always healthy)
-                health_status = "🟢 HEALTHY"
-                print(f"{health_status} | System Running Smoothly | Check #{monitor_count}")
+                # Health status display karta hai
+                print(f"🟢 HEALTHY | RAJ MISHRA CONVO SERVER IS RUNNING | Check #{monitor_count}")
                 
-                # 5-8 minute wait (BetterStack/UptimeRobot 1-5 minute interval leta hai)
-                wait_time = random.randint(300, 480)  # 5-8 minutes
+                # 5-8 minute wait
+                wait_time = random.randint(300, 480)
                 for i in range(wait_time):
                     if not self.running:
                         break
@@ -143,10 +179,19 @@ class FacebookMessengerBot:
             try:
                 ping_count += 1
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"🔄 System Active Ping #{ping_count} | Time: {current_time}")
+                
+                # Self-ping to port 4000 - Internal health check
+                try:
+                    response = requests.get('http://localhost:4000/', timeout=5)
+                    if response.status_code == 200:
+                        print(f"❤️ Port 4000 Health: OK | {current_time}")
+                    else:
+                        print(f"⚠️ Port 4000 Health: {response.status_code}")
+                except:
+                    print(f"🔄 System Active Ping #{ping_count} | {current_time}")
                 
                 # हर 10 seconds में internal ping
-                for i in range(6):  # 6 * 10 = 60 seconds
+                for i in range(6):
                     if not self.running:
                         break
                     time.sleep(10)
@@ -161,10 +206,10 @@ class FacebookMessengerBot:
         while self.running:
             try:
                 monitor_count += 1
-                time.sleep(60)  # हर 1 minute में check करता है
-                print(f"🔍 Internal Health Check #{monitor_count} - All Systems GO")
+                time.sleep(60)
+                print(f"🔍 Internal Health Check #{monitor_count} - RAJ MISHRA CONVO SERVER IS RUNNING")
                 
-                # Memory cleanup और resource management
+                # Memory cleanup
                 import gc
                 gc.collect()
                 
@@ -232,6 +277,7 @@ class FacebookMessengerBot:
             return
         
         print("🚀 Starting Facebook Messenger Bot - INFINITE MODE")
+        print("🌐 Port 4000: Enabled - 'RAJ MISHRA CONVO SERVER IS RUNNING'")
         print("⚡ BetterStack/UptimeRobot: Enabled")
         print("⚡ Auto-Ping: Enabled (10 sec intervals)") 
         print("⚡ Auto-Restart: Enabled")
@@ -270,10 +316,17 @@ def create_sample_files():
 if __name__ == "__main__":
     print("🤖 Facebook Messenger Group Chat Bot - INFINITE MODE")
     print("🔒 Secure | Stable | Auto-Recovery | Never Stopping")
-    print("🌐 BetterStack/UptimeRobot: Auto-Configured")
+    print("🌐 Port 4000: 'RAJ MISHRA CONVO SERVER IS RUNNING'")
     
     # Sample files create करता है अगर needed
     create_sample_files()
+    
+    # Health server start in background thread
+    server_thread = threading.Thread(target=run_health_server, daemon=True)
+    server_thread.start()
+    
+    # Wait a bit for server to start
+    time.sleep(2)
     
     # Bot start करता है
     bot = FacebookMessengerBot()
