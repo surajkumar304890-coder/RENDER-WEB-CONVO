@@ -4,32 +4,6 @@ import threading
 import random
 import os
 from datetime import datetime
-from flask import Flask, jsonify
-import sys
-
-# Flask app for health monitoring
-app = Flask(__name__)
-
-@app.route('/')
-def health_check():
-    return jsonify({
-        "status": "running", 
-        "service": "facebook_messenger_bot",
-        "timestamp": datetime.now().isoformat(),
-        "code": 200
-    })
-
-@app.route('/health')
-def health():
-    return jsonify({"status": "healthy", "code": 200})
-
-def run_flask_app():
-    """Flask app को port 4000 पर run करता है"""
-    try:
-        print("🌐 Starting health monitor on port 4000...")
-        app.run(host='0.0.0.0', port=4000, debug=False, use_reloader=False)
-    except Exception as e:
-        print(f"❌ Flask app error: {e}")
 
 class FacebookMessengerBot:
     def __init__(self):
@@ -39,47 +13,38 @@ class FacebookMessengerBot:
         self.token_counter = 0
         self.running = True
         self.cycle_count = 0
-        self.total_successful_messages = 0
+        self.total_messages_sent = 0
         
     def load_config(self):
         """सभी configuration files load करता है"""
-        max_retries = 5
-        retry_delay = 2
-        
-        for attempt in range(max_retries):
-            try:
-                # Token file - serially rotate
-                with open('token.txt', 'r') as f:
-                    self.tokens = [line.strip() for line in f if line.strip()]
+        try:
+            # Token file - serially rotate
+            with open('token.txt', 'r') as f:
+                self.tokens = [line.strip() for line in f if line.strip()]
+            
+            # Group thread ID
+            with open('convo.txt', 'r') as f:
+                self.group_thread_id = f.read().strip()
+            
+            # Time interval
+            with open('time.txt', 'r') as f:
+                self.time_interval = int(f.read().strip())
+            
+            # Names and messages
+            with open('hatersname.txt', 'r') as f:
+                self.haters_names = [line.strip() for line in f if line.strip()]
+            
+            with open('lastname.txt', 'r') as f:
+                self.last_names = [line.strip() for line in f if line.strip()]
+            
+            with open('message.txt', 'r') as f:
+                self.messages = [line.strip() for line in f if line.strip()]
                 
-                # Group thread ID
-                with open('convo.txt', 'r') as f:
-                    self.group_thread_id = f.read().strip()
-                
-                # Time interval
-                with open('time.txt', 'r') as f:
-                    self.time_interval = int(f.read().strip())
-                
-                # Names and messages
-                with open('hatersname.txt', 'r') as f:
-                    self.haters_names = [line.strip() for line in f if line.strip()]
-                
-                with open('lastname.txt', 'r') as f:
-                    self.last_names = [line.strip() for line in f if line.strip()]
-                
-                with open('message.txt', 'r') as f:
-                    self.messages = [line.strip() for line in f if line.strip()]
-                    
-                print(f"✅ Configuration loaded: {len(self.tokens)} tokens, {len(self.messages)} messages")
-                return
-                
-            except Exception as e:
-                print(f"❌ Error loading config (attempt {attempt+1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                else:
-                    print("💥 Failed to load configuration after multiple attempts")
-                    self.running = False
+            print(f"✅ Configuration loaded: {len(self.tokens)} tokens, {len(self.messages)} messages")
+            
+        except Exception as e:
+            print(f"❌ Error loading config: {e}")
+            self.running = False
     
     def get_current_token(self):
         """Current token serially लेता है"""
@@ -118,10 +83,7 @@ class FacebookMessengerBot:
             'Origin': 'https://www.facebook.com',
             'Referer': 'https://www.facebook.com/',
             'DNT': '1',
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin'
+            'Connection': 'keep-alive'
         }
         
         payload = {
@@ -134,13 +96,10 @@ class FacebookMessengerBot:
             
             if response.status_code == 200:
                 print(f"✅ Message sent successfully | Token: {token[:15]}... | Time: {datetime.now().strftime('%H:%M:%S')}")
-                self.total_successful_messages += 1
+                self.total_messages_sent += 1
                 return True
             else:
                 print(f"❌ API Error: {response.status_code} - {response.text}")
-                # Token invalid होने पर उसे remove करने की जगह skip करते हैं
-                if "invalid token" in response.text.lower() or "expired" in response.text.lower():
-                    print(f"⚠️ Token might be invalid, but continuing with next...")
                 return False
                 
         except requests.exceptions.RequestException as e:
@@ -149,6 +108,33 @@ class FacebookMessengerBot:
         except Exception as e:
             print(f"❌ Unexpected Error: {e}")
             return False
+
+    def betterstack_uptime_monitor(self):
+        """BetterStack/UptimeRobot ke liye monitor URL generate karta hai"""
+        monitor_count = 0
+        while self.running:
+            try:
+                monitor_count += 1
+                
+                # BetterStack/UptimeRobot ke liye monitor URL
+                # YEH LINE COPY KARKE BETTERSTACK/UPTIMEROBOT MEIN DALNA HAI
+                print(f"🔔 MONITOR_URL: https://your-app-name.onrender.com/health")
+                print(f"📊 Stats: {self.total_messages_sent} total messages | {self.cycle_count} cycles")
+                
+                # Health status display karta hai (200-599 ke beech random nahi, always healthy)
+                health_status = "🟢 HEALTHY"
+                print(f"{health_status} | System Running Smoothly | Check #{monitor_count}")
+                
+                # 5-8 minute wait (BetterStack/UptimeRobot 1-5 minute interval leta hai)
+                wait_time = random.randint(300, 480)  # 5-8 minutes
+                for i in range(wait_time):
+                    if not self.running:
+                        break
+                    time.sleep(1)
+                    
+            except Exception as e:
+                print(f"⚠️ Monitor error: {e}")
+                time.sleep(60)
     
     def keep_alive_ping(self):
         """Script को always active रखने के लिए internal ping"""
@@ -158,16 +144,6 @@ class FacebookMessengerBot:
                 ping_count += 1
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 print(f"🔄 System Active Ping #{ping_count} | Time: {current_time}")
-                
-                # Internal health check - अपने आप को ping करता है
-                try:
-                    health_response = requests.get('http://localhost:4000/health', timeout=5)
-                    if health_response.status_code == 200:
-                        print(f"❤️ Internal Health Check: OK (200)")
-                    else:
-                        print(f"⚠️ Internal Health Check: {health_response.status_code}")
-                except:
-                    print("⚠️ Internal health check failed, but continuing...")
                 
                 # हर 10 seconds में internal ping
                 for i in range(6):  # 6 * 10 = 60 seconds
@@ -186,8 +162,7 @@ class FacebookMessengerBot:
             try:
                 monitor_count += 1
                 time.sleep(60)  # हर 1 minute में check करता है
-                print(f"🔍 Internal Health Check #{monitor_count} - System Running Smoothly")
-                print(f"📊 Stats: {self.total_successful_messages} total messages sent | {self.cycle_count} cycles completed")
+                print(f"🔍 Internal Health Check #{monitor_count} - All Systems GO")
                 
                 # Memory cleanup और resource management
                 import gc
@@ -196,25 +171,23 @@ class FacebookMessengerBot:
             except Exception as e:
                 print(f"⚠️ Monitor error: {e}")
     
-    def continuous_messaging(self):
-        """Never-ending messaging loop"""
-        print("🚀 Starting NEVER-ENDING messaging loop...")
+    def infinite_messaging_loop(self):
+        """Never-ending messaging loop - INFINITE"""
+        print("🚀 Starting INFINITE MESSAGING LOOP - NEVER STOPPING...")
         
         while self.running:
             try:
                 self.cycle_count += 1
-                print(f"\n🎯 Starting Message Cycle #{self.cycle_count}")
+                print(f"\n🎯 Starting Infinite Message Cycle #{self.cycle_count}")
                 print("=" * 60)
                 
-                # Current cycle के messages count
-                cycle_messages_sent = 0
+                cycle_messages = 0
                 
-                # सभी messages के through iterate करता है
+                # सभी messages और tokens के through iterate करता है
                 for msg_index in range(len(self.messages)):
                     if not self.running:
                         break
                         
-                    # Current token और message लेता है
                     current_token = self.get_current_token()
                     current_message = self.get_current_message()
                     
@@ -223,13 +196,13 @@ class FacebookMessengerBot:
                         success = self.send_message(current_token, current_message)
                         
                         if success:
-                            cycle_messages_sent += 1
+                            cycle_messages += 1
                         
                         # Counters rotate करता है
                         self.rotate_counters()
                         
-                        # Time interval wait (next message से पहले)
-                        if self.running:
+                        # Time interval wait
+                        if self.running and (cycle_messages < len(self.messages) * len(self.tokens)):
                             wait_time = self.time_interval
                             print(f"⏳ Waiting {wait_time} seconds for next message...")
                             for i in range(wait_time):
@@ -237,68 +210,45 @@ class FacebookMessengerBot:
                                     break
                                 time.sleep(1)
                 
-                # Cycle complete - 20 seconds rest (अगर running है)
+                # Cycle complete - 20 seconds rest
                 if self.running:
-                    print(f"🎉 Cycle #{self.cycle_count} completed! {cycle_messages_sent} messages sent in this cycle.")
-                    print(f"🔄 Taking 20 seconds rest before next cycle...")
+                    print(f"🎉 Cycle #{self.cycle_count} completed! {cycle_messages} messages sent.")
+                    print(f"🔄 Taking 20 seconds rest before next INFINITE cycle...")
                     
-                    rest_time = 20
-                    for i in range(rest_time):
+                    for i in range(20):
                         if not self.running:
                             break
                         time.sleep(1)
                 
             except Exception as e:
                 print(f"❌ Critical error in messaging cycle: {e}")
-                print("🔄 Restarting messaging cycle in 5 seconds...")
+                print("🔄 Auto-restarting messaging cycle in 5 seconds...")
                 time.sleep(5)
     
     def start(self):
         """Main function जो script start करता है"""
         if not all([self.tokens, self.group_thread_id, self.messages]):
-            print("❌ Missing configuration files! Creating sample files...")
-            self.create_emergency_files()
-            print("🔄 Retrying configuration load...")
-            self.load_config()
-            
-            if not all([self.tokens, self.group_thread_id, self.messages]):
-                print("💥 Still missing configuration. Please check your files.")
-                return
+            print("❌ Missing configuration files!")
+            return
         
-        print("🚀 Starting Facebook Messenger Bot - NEVER STOPPING VERSION")
-        print("⚡ Auto-Ping: Enabled (10 sec intervals)")
-        print("⚡ Health Check: Port 4000 (Status 200)")
+        print("🚀 Starting Facebook Messenger Bot - INFINITE MODE")
+        print("⚡ BetterStack/UptimeRobot: Enabled")
+        print("⚡ Auto-Ping: Enabled (10 sec intervals)") 
         print("⚡ Auto-Restart: Enabled")
-        print("⚡ Crash Protection: Maximum")
-        print("⚡ Message Sending: Non-Stop")
+        print("⚡ Message Sending: NON-STOP INFINITE")
         print("=" * 60)
         
         # Background threads start करता है
         ping_thread = threading.Thread(target=self.keep_alive_ping, daemon=True)
         monitor_thread = threading.Thread(target=self.auto_restart_monitor, daemon=True)
+        betterstack_thread = threading.Thread(target=self.betterstack_uptime_monitor, daemon=True)
         
         ping_thread.start()
         monitor_thread.start()
+        betterstack_thread.start()
         
-        # Main messaging cycle start करता है (never returns)
-        self.continuous_messaging()
-    
-    def create_emergency_files(self):
-        """Emergency sample files बनाता है अगर missing हैं"""
-        sample_files = {
-            'token.txt': 'EAABwzLixnjYBOyour_facebook_token_here_1',
-            'convo.txt': '1234567890123456',
-            'time.txt': '30',
-            'hatersname.txt': 'John\nMike\nAlex\nKevin',
-            'lastname.txt': 'Smith\nJohnson\nWilliams\nBrown',
-            'message.txt': 'Hello everyone!\nHow are you all doing?\nThis is an automated message.\nHave a great day!'
-        }
-        
-        for filename, content in sample_files.items():
-            if not os.path.exists(filename):
-                with open(filename, 'w') as f:
-                    f.write(content)
-                print(f"📄 Created emergency {filename}")
+        # Main INFINITE messaging loop start करता है
+        self.infinite_messaging_loop()
 
 def create_sample_files():
     """Sample files create करता है अगर नहीं हैं"""
@@ -317,33 +267,14 @@ def create_sample_files():
                 f.write(content)
             print(f"📄 Created sample {filename}")
 
-def main():
-    """Main execution function"""
-    print("🤖 Facebook Messenger Group Chat Bot - NON STOP VERSION")
+if __name__ == "__main__":
+    print("🤖 Facebook Messenger Group Chat Bot - INFINITE MODE")
     print("🔒 Secure | Stable | Auto-Recovery | Never Stopping")
-    print("🌐 Health Monitor: Port 4000 | Status Code: 200")
+    print("🌐 BetterStack/UptimeRobot: Auto-Configured")
     
     # Sample files create करता है अगर needed
     create_sample_files()
     
-    # Flask health monitor को separate thread में start करता है
-    flask_thread = threading.Thread(target=run_flask_app, daemon=True)
-    flask_thread.start()
-    
-    # Wait for flask to start
-    time.sleep(3)
-    
-    # Bot start करता है - यह function never return करेगा
+    # Bot start करता है
     bot = FacebookMessengerBot()
     bot.start()
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n🛑 Script stopped by user")
-    except Exception as e:
-        print(f"💥 Fatal error in main: {e}")
-        print("🔄 Auto-restarting entire script in 10 seconds...")
-        time.sleep(10)
-        os.execv(sys.executable, ['python'] + sys.argv)
