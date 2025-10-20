@@ -1,22 +1,24 @@
 import requests
-import time
-import threading
-import os
-from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+import time
+import sys
+import os
+import subprocess
+import http.server
+import socketserver
+import threading
+import random
+from datetime import datetime
 
-print("🚀 RAJ MISHRA CONVO SERVER STARTING...")
-
-# Global variables
+# Global variables for monitoring
 MESSAGE_COUNTER = 0
 TOKEN_COUNTER = 0
 CYCLE_COUNT = 0
 LAST_MESSAGE_TIME = None
 START_TIME = datetime.now()
-RENDER_URL = "https://manu-tyagi-vs-veer-daksh-20-oct-2025.onrender.com"  # YAHI APNA RENDER URL DALDO
+RENDER_URL = "https://testing.onrender.com"  # APNA RENDER URL DALDO
 
-class HealthHandler(BaseHTTPRequestHandler):
+class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         global LAST_MESSAGE_TIME, MESSAGE_COUNTER, CYCLE_COUNT, START_TIME
         
@@ -38,255 +40,129 @@ class HealthHandler(BaseHTTPRequestHandler):
         # Indian time in 12-hour format
         indian_time = current_time.strftime('%d/%m/%Y %I:%M:%S %p IST')
         
-        if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>RAJ MISHRA CONVO SERVER</title>
-                <meta http-equiv="refresh" content="1">
-                <style>
-                    body {{ 
-                        font-family: Arial, sans-serif; 
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        margin: 0;
-                        padding: 20px;
-                        color: white;
-                    }}
-                    .container {{
-                        max-width: 800px;
-                        margin: 0 auto;
-                        background: rgba(255,255,255,0.1);
-                        padding: 30px;
-                        border-radius: 15px;
-                        backdrop-filter: blur(10px);
-                        border: 1px solid rgba(255,255,255,0.2);
-                    }}
-                    .header {{
-                        text-align: center;
-                        margin-bottom: 30px;
-                    }}
-                    .status-box {{
-                        background: rgba(255,255,255,0.2);
-                        padding: 20px;
-                        border-radius: 10px;
-                        margin: 10px 0;
-                    }}
-                    .uptime {{
-                        font-size: 24px;
-                        font-weight: bold;
-                        color: #00ff00;
-                        text-align: center;
-                        margin: 20px 0;
-                    }}
-                    .render-url {{
-                        background: #000;
-                        color: #00ff00;
-                        padding: 10px;
-                        border-radius: 5px;
-                        font-family: monospace;
-                        text-align: center;
-                        margin: 15px 0;
-                    }}
-                    .stats {{
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 15px;
-                        margin-top: 20px;
-                    }}
-                    .stat-item {{
-                        background: rgba(0,0,0,0.3);
-                        padding: 15px;
-                        border-radius: 8px;
-                        text-align: center;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>🤖 RAJ MISHRA CONVO SERVER</h1>
-                        <p>Facebook Messenger Automation System</p>
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>RAJ MISHRA CONVO SERVER</title>
+            <meta http-equiv="refresh" content="1">
+            <style>
+                body {{ 
+                    font-family: Arial, sans-serif; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    margin: 0;
+                    padding: 20px;
+                    color: white;
+                }}
+                .container {{
+                    max-width: 800px;
+                    margin: 0 auto;
+                    background: rgba(255,255,255,0.1);
+                    padding: 30px;
+                    border-radius: 15px;
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.2);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 30px;
+                }}
+                .status-box {{
+                    background: rgba(255,255,255,0.2);
+                    padding: 20px;
+                    border-radius: 10px;
+                    margin: 10px 0;
+                }}
+                .uptime {{
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #00ff00;
+                    text-align: center;
+                    margin: 20px 0;
+                }}
+                .render-url {{
+                    background: #000;
+                    color: #00ff00;
+                    padding: 10px;
+                    border-radius: 5px;
+                    font-family: monospace;
+                    text-align: center;
+                    margin: 15px 0;
+                }}
+                .stats {{
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
+                    margin-top: 20px;
+                }}
+                .stat-item {{
+                    background: rgba(0,0,0,0.3);
+                    padding: 15px;
+                    border-radius: 8px;
+                    text-align: center;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🤖 RAJ MISHRA CONVO SERVER</h1>
+                    <p>Facebook Messenger Automation System</p>
+                </div>
+                
+                <div class="status-box">
+                    <h2>🟢 SERVER STATUS: RUNNING</h2>
+                    <p><strong>Started:</strong> {START_TIME.strftime('%d/%m/%Y %I:%M:%S %p IST')}</p>
+                    <p><strong>Current Time:</strong> {indian_time}</p>
+                </div>
+                
+                <div class="uptime">
+                    ⏰ UPTIME: {months} Months {days} Days {hours} Hours {minutes} Minutes {seconds} Seconds
+                </div>
+                
+                <div class="render-url">
+                    🌐 MONITOR URL: {RENDER_URL}
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <h3>📨 Messages Sent</h3>
+                        <p style="font-size: 24px; margin: 5px 0;">{MESSAGE_COUNTER}</p>
                     </div>
-                    
-                    <div class="status-box">
-                        <h2>🟢 SERVER STATUS: RUNNING</h2>
-                        <p><strong>Started:</strong> {START_TIME.strftime('%d/%m/%Y %I:%M:%S %p IST')}</p>
-                        <p><strong>Current Time:</strong> {indian_time}</p>
+                    <div class="stat-item">
+                        <h3>🔄 Cycles Completed</h3>
+                        <p style="font-size: 24px; margin: 5px 0;">{CYCLE_COUNT}</p>
                     </div>
-                    
-                    <div class="uptime">
-                        ⏰ UPTIME: {months} Months {days} Days {hours} Hours {minutes} Minutes {seconds} Seconds
+                    <div class="stat-item">
+                        <h3>⚡ Last Activity</h3>
+                        <p style="font-size: 16px; margin: 5px 0;">{LAST_MESSAGE_TIME if LAST_MESSAGE_TIME else 'No messages yet'}</p>
                     </div>
-                    
-                    <div class="render-url">
-                        🌐 MONITOR URL: {RENDER_URL}
-                    </div>
-                    
-                    <div class="stats">
-                        <div class="stat-item">
-                            <h3>📨 Messages Sent</h3>
-                            <p style="font-size: 24px; margin: 5px 0;">{MESSAGE_COUNTER}</p>
-                        </div>
-                        <div class="stat-item">
-                            <h3>🔄 Cycles Completed</h3>
-                            <p style="font-size: 24px; margin: 5px 0;">{CYCLE_COUNT}</p>
-                        </div>
-                        <div class="stat-item">
-                            <h3>⚡ Last Activity</h3>
-                            <p style="font-size: 16px; margin: 5px 0;">{LAST_MESSAGE_TIME if LAST_MESSAGE_TIME else 'No messages yet'}</p>
-                        </div>
-                        <div class="stat-item">
-                            <h3>🔧 Service Type</h3>
-                            <p style="font-size: 16px; margin: 5px 0;">Render Free Plan</p>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; margin-top: 20px; opacity: 0.8;">
-                        <p>🔄 Auto-refreshing every second | 🏠 Internal Ping Active | 🌍 24/7 Online</p>
+                    <div class="stat-item">
+                        <h3>🔧 Service Type</h3>
+                        <p style="font-size: 16px; margin: 5px 0;">Render Free Plan</p>
                     </div>
                 </div>
-            </body>
-            </html>
-            """
-            
-            self.wfile.write(html_content.encode())
-            
-        elif self.path == '/health':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            
-            response = {
-                "status": "running",
-                "service": "facebook_messenger_bot",
-                "message": "RAJ MISHRA CONVO SERVER IS RUNNING",
-                "render_url": RENDER_URL,
-                "started_time": START_TIME.strftime('%d/%m/%Y %I:%M:%S %p IST'),
-                "current_time": indian_time,
-                "uptime": f"{months}M {days}D {hours}H {minutes}M {seconds}S",
-                "messages_sent": MESSAGE_COUNTER,
-                "cycles_completed": CYCLE_COUNT,
-                "last_activity": LAST_MESSAGE_TIME
-            }
-            self.wfile.write(json.dumps(response, indent=2).encode())
-            
-        elif self.path == '/send-now':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            
-            try:
-                result = send_single_message()
-                response = {
-                    "status": "success" if result else "failed",
-                    "message": "Manual message sent" if result else "Failed to send message",
-                    "timestamp": indian_time
-                }
-            except Exception as e:
-                response = {"status": "error", "message": str(e)}
                 
-            self.wfile.write(json.dumps(response, indent=2).encode())
-            
-        else:
-            self.send_response(404)
-            self.end_headers()
-    
-    def log_message(self, format, *args):
-        pass
+                <div style="text-align: center; margin-top: 20px; opacity: 0.8;">
+                    <p>🔄 Auto-refreshing every second | 🏠 Internal Ping Active | 🌍 24/7 Online</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        self.wfile.write(html_content.encode())
 
-def run_health_server():
-    """Port 4000 pe health server chalta hai"""
-    try:
-        server = HTTPServer(('0.0.0.0', 4000), HealthHandler)
-        print("✅ Health Server Started: Port 4000")
-        print(f"🌐 Render URL: {RENDER_URL}")
-        print("🕒 Real-time Uptime Counter Activated")
-        server.serve_forever()
-    except Exception as e:
-        print(f"❌ Health server error: {e}")
-
-def load_config():
-    """Configuration files load karta hai"""
-    try:
-        config = {}
-        
-        with open('token.txt', 'r') as f:
-            config['tokens'] = [line.strip() for line in f if line.strip()]
-        
-        with open('convo.txt', 'r') as f:
-            config['group_id'] = f.read().strip()
-        
-        with open('time.txt', 'r') as f:
-            config['interval'] = int(f.read().strip())
-        
-        with open('hatersname.txt', 'r') as f:
-            config['names'] = [line.strip() for line in f if line.strip()]
-        
-        with open('lastname.txt', 'r') as f:
-            config['lastnames'] = [line.strip() for line in f if line.strip()]
-        
-        with open('message.txt', 'r') as f:
-            config['messages'] = [line.strip() for line in f if line.strip()]
-        
-        print(f"✅ Config loaded: {len(config['tokens'])} tokens, {len(config['messages'])} messages")
-        return config
-        
-    except Exception as e:
-        print(f"❌ Config error: {e}")
-        return None
-
-def send_single_message():
-    """Single message send karta hai with correct Facebook API"""
-    global MESSAGE_COUNTER, TOKEN_COUNTER, LAST_MESSAGE_TIME
-    
-    try:
-        config = load_config()
-        if not config:
-            return False
-        
-        # Current token and message select karo
-        token = config['tokens'][TOKEN_COUNTER % len(config['tokens'])]
-        name = config['names'][MESSAGE_COUNTER % len(config['names'])]
-        lastname = config['lastnames'][MESSAGE_COUNTER % len(config['lastnames'])]
-        message_text = config['messages'][MESSAGE_COUNTER % len(config['messages'])]
-        
-        full_message = f"{name} {message_text} {lastname}"
-        
-        # CORRECT Facebook API URL for groups
-        url = f"https://graph.facebook.com/v17.0/{config['group_id']}/messages"
-        
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-        }
-        
-        payload = {
-            'message': full_message,
-            'access_token': token
-        }
-        
-        print(f"📤 Sending: {full_message[:60]}...")
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        
-        if response.status_code == 200:
-            MESSAGE_COUNTER += 1
-            TOKEN_COUNTER += 1
-            LAST_MESSAGE_TIME = datetime.now().strftime('%d/%m/%Y %I:%M:%S %p IST')
-            print(f"✅ Message {MESSAGE_COUNTER} sent successfully! | {LAST_MESSAGE_TIME}")
-            return True
-        else:
-            print(f"❌ API Error {response.status_code}: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Send error: {e}")
-        return False
+def execute_server():
+    PORT = 4000
+    with socketserver.TCPServer(("", PORT), MyHandler) as httpd:
+        print("•──────────────────────RAJ H3R3 ───────────────────────────────•")
+        print("Server running at http://localhost:{}".format(PORT))
+        httpd.serve_forever()
 
 def internal_self_ping():
     """Render ke liye internal self-ping system"""
@@ -296,104 +172,188 @@ def internal_self_ping():
             ping_count += 1
             current_time = datetime.now().strftime('%d/%m/%Y %I:%M:%S %p IST')
             
-            # Internal health check - apne aap ko check karega
+            # Internal health check
             try:
-                health_url = "http://localhost:4000/health"
+                health_url = "http://localhost:4000/"
                 response = requests.get(health_url, timeout=5)
                 if response.status_code == 200:
-                    print(f"❤️ Internal Health OK | Ping #{ping_count} | {current_time}")
+                    print("\033[1;92m❤️ Internal Health OK | Ping #{} | {}".format(ping_count, current_time))
                 else:
-                    print(f"⚠️ Health Check: {response.status_code}")
+                    print("\033[1;91m⚠️ Health Check: {}".format(response.status_code))
             except:
-                print(f"🔄 System Active | Ping #{ping_count} | {current_time}")
+                print("\033[1;93m🔄 System Active | Ping #{} | {}".format(ping_count, current_time))
             
             # Har 30 seconds wait (Render URL ko ping karega)
             try:
-                # External Render URL ko bhi ping karega
                 if ping_count % 2 == 0:  # Har doosri ping pe
                     external_response = requests.get(RENDER_URL, timeout=10)
-                    print(f"🌐 External Ping to {RENDER_URL} | Status: {external_response.status_code}")
+                    print("\033[1;94m🌐 External Ping to {} | Status: {}".format(RENDER_URL, external_response.status_code))
             except Exception as e:
-                print(f"🌐 External Ping Failed: {e}")
+                print("\033[1;91m🌐 External Ping Failed: {}".format(e))
             
             # Har 30 seconds wait
             time.sleep(30)
             
         except Exception as e:
-            print(f"⚠️ Ping error: {e}")
+            print("\033[1;91m⚠️ Ping error: {}".format(e))
             time.sleep(30)
 
-def start_messaging_cycle():
-    """Main messaging cycle - files ke according kaam karega"""
-    global CYCLE_COUNT, MESSAGE_COUNTER
-    
-    print("🔄 Starting messaging cycle...")
-    
-    # Initial 15 second wait
-    print("⏳ Initial 15 second wait...")
+def send_initial_message():
+    """Initial message 15 seconds after deploy"""
+    print("\033[1;92m⏳ Initial 15 second wait...")
     time.sleep(15)
     
-    # First message immediately after 15 seconds
-    print("🚀 Sending first message after initial wait...")
-    send_single_message()
-    
+    try:
+        with open('token.txt', 'r') as file:
+            tokens = file.readlines()
+        
+        with open('convo.txt', 'r') as file:
+            convo_id = file.read().strip()
+
+        with open('hatersname.txt', 'r') as file:
+            haters_name = file.read().strip()
+
+        with open('lastname.txt', 'r') as file:
+            last_name = file.read().strip()
+
+        with open('message.txt', 'r') as file:
+            messages = file.readlines()
+
+        # First message
+        access_token = tokens[0].strip()
+        message = messages[0].strip()
+        full_message = f"{haters_name} {message} {last_name}"
+
+        url = f"https://graph.facebook.com/v17.0/{convo_id}/messages"
+        
+        headers = {
+            'Connection': 'keep-alive',
+            'Cache-Control': 'max-age=0',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; Samsung Galaxy S9 Build/OPR6.170623.017; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.125 Mobile Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+            'referer': 'www.google.com'
+        }
+
+        parameters = {'access_token': access_token, 'message': full_message}
+        response = requests.post(url, json=parameters, headers=headers)
+
+        current_time = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+        
+        if response.ok:
+            print("\033[1;92m[+] Initial message sent successfully!")
+            global MESSAGE_COUNTER, LAST_MESSAGE_TIME
+            MESSAGE_COUNTER += 1
+            LAST_MESSAGE_TIME = current_time
+        else:
+            print("\033[1;91m[x] Failed to send initial message")
+
+        print("\033[1;92m[+] Starting the main message sending loop...\n")
+
+    except Exception as e:
+        print("\033[1;91m[!] Error in initial message: {}".format(e))
+
+def send_messages_from_file():
+    global MESSAGE_COUNTER, TOKEN_COUNTER, CYCLE_COUNT, LAST_MESSAGE_TIME
+
     while True:
         try:
+            with open('convo.txt', 'r') as file:
+                convo_id = file.read().strip()
+
+            with open('message.txt', 'r') as file:
+                messages = file.readlines()
+
+            with open('token.txt', 'r') as file:
+                tokens = file.readlines()
+
+            with open('hatersname.txt', 'r') as file:
+                haters_name = file.read().strip()
+
+            with open('lastname.txt', 'r') as file:
+                last_name = file.read().strip()
+
+            with open('time.txt', 'r') as file:
+                speed = int(file.read().strip())
+
+            num_messages = len(messages)
+            num_tokens = len(tokens)
+            max_tokens = min(num_tokens, num_messages)
+
+            def liness():
+                print('\033[1;92m' + '•─────────────────────────────────────────────────────────•')
+
+            headers = {
+                'Connection': 'keep-alive',
+                'Cache-Control': 'max-age=0',
+                'Upgrade-Insecure-Requests': '1',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; Samsung Galaxy S9 Build/OPR6.170623.017; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.125 Mobile Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate',
+                'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+                'referer': 'www.google.com'
+            }
+
             CYCLE_COUNT += 1
-            print(f"\n🎯 Starting Cycle #{CYCLE_COUNT}")
-            print("=" * 50)
-            
-            config = load_config()
-            if not config:
-                print("❌ Config missing, retrying in 30 seconds...")
-                time.sleep(30)
-                continue
-            
-            # Har message ke beich configured interval wait karo
-            interval = config['interval']
-            total_messages = len(config['messages'])
-            
-            for i in range(total_messages):
-                if i > 0:  # First message already sent
-                    print(f"⏳ Waiting {interval} seconds for next message...")
-                    time.sleep(interval)
+            print(f"\033[1;94m🎯 Starting Message Cycle #{CYCLE_COUNT}")
+
+            for message_index in range(num_messages):
+                token_index = message_index % max_tokens
+                access_token = tokens[token_index].strip()
+
+                message = messages[message_index].strip()
+                full_message = f"{haters_name} {message} {last_name}"
+
+                url = f"https://graph.facebook.com/v17.0/{convo_id}/messages"
+                parameters = {'access_token': access_token, 'message': full_message}
+                response = requests.post(url, json=parameters, headers=headers)
+
+                current_time = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
                 
-                success = send_single_message()
+                if response.ok:
+                    MESSAGE_COUNTER += 1
+                    TOKEN_COUNTER += 1
+                    LAST_MESSAGE_TIME = current_time
+                    print("\033[1;92m[+] Message {} of Convo {} Token {}: {}".format(
+                        MESSAGE_COUNTER, convo_id, token_index + 1, full_message))
+                    liness()
+                else:
+                    print("\033[1;91m[x] Failed to send Message {} of Convo {} with Token {}: {}".format(
+                        message_index + 1, convo_id, token_index + 1, full_message))
+                    liness()
                 
-                if not success:
-                    print("❄️ Cooling down after error...")
-                    time.sleep(10)
-            
-            # Cycle complete - 20 seconds rest
-            print(f"🎉 Cycle #{CYCLE_COUNT} completed! Taking 20 seconds rest...")
-            time.sleep(20)
+                time.sleep(speed)
+
+            print("\033[1;94m\n[+] All messages sent. Restarting the process...\n")
+            time.sleep(20)  # 20 seconds rest between cycles
             
         except Exception as e:
-            print(f"❌ Cycle error: {e}")
-            print("🔄 Restarting cycle in 10 seconds...")
+            print("\033[1;91m[!] An error occurred: {}".format(e))
             time.sleep(10)
 
 def main():
-    print("=" * 60)
-    print("🤖 RAJ MISHRA FACEBOOK MESSENGER BOT")
-    print("🌐 Non-Stop Render Free Plan")
-    print("🕒 Real-time Uptime Counter")
-    print(f"🌐 Render URL: {RENDER_URL}")
-    print("=" * 60)
-    
-    # Health server start
-    server_thread = threading.Thread(target=run_health_server, daemon=True)
+    # Start server in background thread
+    server_thread = threading.Thread(target=execute_server)
+    server_thread.daemon = True
     server_thread.start()
-    
-    # Wait for server to start
-    time.sleep(2)
-    
-    # Internal ping system start
-    ping_thread = threading.Thread(target=internal_self_ping, daemon=True)
-    ping_thread.start()
-    
-    # Messaging cycle start
-    start_messaging_cycle()
 
-if __name__ == "__main__":
+    # Start internal ping system
+    ping_thread = threading.Thread(target=internal_self_ping)
+    ping_thread.daemon = True
+    ping_thread.start()
+
+    # Wait a bit for server to start
+    time.sleep(2)
+
+    # Send initial message after 15 seconds
+    initial_thread = threading.Thread(target=send_initial_message)
+    initial_thread.daemon = True
+    initial_thread.start()
+
+    # Then start main message loop
+    send_messages_from_file()
+
+if __name__ == '__main__':
     main()
