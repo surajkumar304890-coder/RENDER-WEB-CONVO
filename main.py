@@ -17,7 +17,7 @@ TOKEN_COUNTER = 0
 CYCLE_COUNT = 0
 LAST_MESSAGE_TIME = None
 START_TIME = datetime.now()
-RENDER_URL = "https://your-app-name.onrender.com"  # APNA RENDER URL DALDO
+RENDER_URL = "https://raj-testing 20 oct 25.onrender.com"  # APNA RENDER URL DALDO
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
