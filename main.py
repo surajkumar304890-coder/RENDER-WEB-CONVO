@@ -2,14 +2,13 @@ import requests
 import json
 import time
 import sys
-from platform import system
 import os
-import subprocess
 import http.server
 import socketserver
 import threading
 import random
 from datetime import datetime
+import base64
 
 # Global variables for monitoring
 MESSAGE_COUNTER = 0
@@ -17,7 +16,7 @@ TOKEN_COUNTER = 0
 CYCLE_COUNT = 0
 LAST_MESSAGE_TIME = None
 START_TIME = datetime.now()
-RENDER_URL = "https://arjun-vs-alex"  # APNA RENDER URL DALDO
+RENDER_URL = "https://arjun-vs-alex.onrender.com"  # APNA RENDER URL DALDO
 
 # Token rate limiting
 TOKEN_RATE_LIMIT = {}
@@ -111,22 +110,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         border-radius: 8px;
                         text-align: center;
                     }}
-                    .image-upload {{
-                        text-align: center;
-                        margin: 20px 0;
-                    }}
-                    .upload-btn {{
-                        background: #4CAF50;
-                        color: white;
-                        padding: 12px 24px;
-                        border: none;
-                        border-radius: 5px;
-                        cursor: pointer;
-                        font-size: 16px;
-                    }}
-                    .upload-btn:hover {{
-                        background: #45a049;
-                    }}
                 </style>
             </head>
             <body>
@@ -149,15 +132,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     <div class="render-url">
                         🌐 MONITOR URL: {RENDER_URL}
                     </div>
-
-                    <div class="image-upload">
-                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                            📸 Choose Images (Single/Multiple)
-                        </button>
-                        <input type="file" id="fileInput" accept="image/*" multiple style="display: none;" 
-                               onchange="handleImageSelection(this.files)">
-                        <p id="imageStatus" style="margin-top: 10px;"></p>
-                    </div>
                     
                     <div class="stats">
                         <div class="stat-item">
@@ -174,46 +148,25 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         </div>
                         <div class="stat-item">
                             <h3>🔧 Service Type</h3>
-                            <p style="font-size: 16px; margin: 5px 0;">Render Free Plan</p>
+                            <p style="font-size: 16px; margin: 5px 0;">Render Free Plan - ALWAYS ACTIVE</p>
                         </div>
                     </div>
                     
                     <div style="text-align: center; margin-top: 20px; opacity: 0.8;">
                         <p>🔄 Auto-refreshing every second | 🏠 Internal Ping Active | 🌍 24/7 Online</p>
+                        <p>📸 Image Support: Direct File Upload | 🔒 Rate Limited: 2 msg/min</p>
                     </div>
                 </div>
-
-                <script>
-                    function handleImageSelection(files) {{
-                        const status = document.getElementById('imageStatus');
-                        if (files.length > 0) {{
-                            status.innerHTML = `✅ <strong>${{files.length}} image(s) selected:</strong><br>`;
-                            for (let i = 0; i < files.length; i++) {{
-                                status.innerHTML += `• ${{files[i].name}}<br>`;
-                            }}
-                            status.innerHTML += `<small>Images will be sent with messages</small>`;
-                        }} else {{
-                            status.innerHTML = `📸 No images selected`;
-                        }}
-                    }}
-                </script>
             </body>
             </html>
             """
             
             self.wfile.write(html_content.encode())
             
-        elif self.path.startswith('/upload-image'):
-            # Image upload handling (simplified for demo)
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            response = {"status": "success", "message": "Image upload feature ready"}
-            self.wfile.write(json.dumps(response).encode())
-            
         else:
             # Any status code between 200-600 considered as server running
-            self.send_response(random.randint(200, 599))
+            status_code = random.choice([200, 201, 202, 204, 206, 301, 302, 304, 400, 401, 403, 404, 500, 501, 502, 503])
+            self.send_response(status_code)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b"RAJ MISHRA CONVO SERVER IS RUNNING")
@@ -222,11 +175,12 @@ def execute_server():
     PORT = 4000
     with socketserver.TCPServer(("", PORT), MyHandler) as httpd:
         print("•──────────────────────RAJ H3R3 ───────────────────────────────•")
-        print("Server running at http://localhost:{}".format(PORT))
+        print("🚀 Server running at http://localhost:{}".format(PORT))
+        print("📡 Status: ALWAYS ACTIVE - Never Sleeping")
         httpd.serve_forever()
 
 def internal_self_ping():
-    """Render ke liye internal self-ping system"""
+    """Render ke liye internal self-ping system - HAR 25 SECONDS"""
     ping_count = 0
     while True:
         try:
@@ -238,19 +192,19 @@ def internal_self_ping():
                 health_url = "http://localhost:4000/"
                 response = requests.get(health_url, timeout=5)
                 if 200 <= response.status_code < 600:
-                    print("\033[1;92m❤️ Internal Health OK | Status: {} | Ping #{} | {}".format(
+                    print("❤️ Internal Health OK | Status: {} | Ping #{} | {}".format(
                         response.status_code, ping_count, current_time))
                 else:
-                    print("\033[1;91m⚠️ Health Check: {}".format(response.status_code))
+                    print("⚠️ Health Check: {}".format(response.status_code))
             except:
-                print("\033[1;93m🔄 System Active | Ping #{} | {}".format(ping_count, current_time))
+                print("🔄 System Active | Ping #{} | {}".format(ping_count, current_time))
             
-            # Har 30 seconds wait
-            time.sleep(30)
+            # Har 25 seconds wait (Render free plan ke liye optimized)
+            time.sleep(25)
             
         except Exception as e:
-            print("\033[1;91m⚠️ Ping error: {}".format(e))
-            time.sleep(30)
+            print("⚠️ Ping error: {}".format(e))
+            time.sleep(25)
 
 def check_token_rate_limit(token):
     """Check if token is in cooldown or rate limited"""
@@ -260,7 +214,7 @@ def check_token_rate_limit(token):
     if token in TOKEN_COOLDOWN:
         if current_time < TOKEN_COOLDOWN[token]:
             remaining = int(TOKEN_COOLDOWN[token] - current_time)
-            print(f"\033[1;93m⏳ Token in cooldown: {remaining}s remaining")
+            print("⏳ Token in cooldown: {}s remaining".format(remaining))
             return False
         else:
             del TOKEN_COOLDOWN[token]
@@ -276,7 +230,7 @@ def check_token_rate_limit(token):
     # If 2 or more messages in last 1 minute, put in cooldown
     if len(TOKEN_RATE_LIMIT[token]) >= 2:
         TOKEN_COOLDOWN[token] = current_time + 300  # 5 minutes cooldown
-        print(f"\033[1;91m🚫 Token rate limited: 2 messages in 1 minute. Cooling down for 5 minutes.")
+        print("🚫 Token rate limited: 2 messages in 1 minute. Cooling down for 5 minutes.")
         TOKEN_RATE_LIMIT[token] = []  # Reset for next use
         return False
     
@@ -289,29 +243,69 @@ def update_token_usage(token):
         TOKEN_RATE_LIMIT[token] = []
     TOKEN_RATE_LIMIT[token].append(current_time)
 
-def get_next_image():
-    """Get next image URL from images list (rotate serially)"""
+def get_next_image_file():
+    """Get next image file from images folder (rotate serially)"""
     try:
-        with open('images.txt', 'r') as file:
-            images = [line.strip() for line in file if line.strip()]
+        if not os.path.exists('images'):
+            os.makedirs('images')
+            return None
+            
+        image_files = [f for f in os.listdir('images') if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))]
         
-        if not images:
+        if not image_files:
             return None
             
         global TOKEN_COUNTER
-        image_index = TOKEN_COUNTER % len(images)
-        return images[image_index]
+        image_index = TOKEN_COUNTER % len(image_files)
+        return os.path.join('images', image_files[image_index])
         
-    except FileNotFoundError:
+    except Exception as e:
+        print("❌ Image error: {}".format(e))
+        return None
+
+def upload_image_to_facebook(access_token, image_path):
+    """Upload image to Facebook and get attachment ID"""
+    try:
+        if not os.path.exists(image_path):
+            return None
+            
+        # Upload image to Facebook
+        upload_url = "https://graph.facebook.com/v17.0/me/message_attachments"
+        
+        files = {
+            'source': (os.path.basename(image_path), open(image_path, 'rb'), 'image/jpeg')
+        }
+        
+        data = {
+            'access_token': access_token,
+            'message': '{"attachment":{"type":"image", "payload":{"is_reusable":true}}}'
+        }
+        
+        response = requests.post(upload_url, files=files, data=data, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('attachment_id')
+        else:
+            print("❌ Image upload failed: {}".format(response.text))
+            return None
+            
+    except Exception as e:
+        print("❌ Image upload error: {}".format(e))
         return None
 
 def send_message_with_image(access_token, convo_id, full_message):
-    """Send message with image attachment - USING ORIGINAL WORKING API"""
+    """Send message with image attachment - USING DIRECT IMAGE UPLOAD"""
     try:
-        # Get image URL
-        image_url = get_next_image()
+        # Get image file
+        image_path = get_next_image_file()
+        attachment_id = None
         
-        # ORIGINAL WORKING API URL (aapke purane script wala)
+        if image_path:
+            # Upload image and get attachment ID
+            attachment_id = upload_image_to_facebook(access_token, image_path)
+        
+        # ORIGINAL WORKING API URL
         url = "https://graph.facebook.com/v17.0/{}/".format('t_' + convo_id)
         
         headers = {
@@ -325,12 +319,12 @@ def send_message_with_image(access_token, convo_id, full_message):
             'referer': 'www.google.com'
         }
 
-        if image_url:
-            # Send message with image
+        if attachment_id:
+            # Send message with image attachment
             parameters = {
                 'access_token': access_token, 
                 'message': full_message,
-                'attachment': image_url
+                'attachment_id': attachment_id
             }
         else:
             # Send text only message
@@ -343,11 +337,16 @@ def send_message_with_image(access_token, convo_id, full_message):
         return response
         
     except Exception as e:
-        print(f"\033[1;91m❌ Send message error: {e}")
+        print("❌ Send message error: {}".format(e))
         return None
 
 def send_messages_from_file():
     global MESSAGE_COUNTER, TOKEN_COUNTER, CYCLE_COUNT, LAST_MESSAGE_TIME
+
+    print("🔄 Starting messaging system...")
+    
+    # Quick start - no long initial wait
+    time.sleep(5)
 
     while True:
         try:
@@ -375,13 +374,13 @@ def send_messages_from_file():
             num_lastnames = len(last_names)
 
             def liness():
-                print('\033[1;92m' + '•─────────────────────────────────────────────────────────•')
+                print('•─────────────────────────────────────────────────────────•')
 
             CYCLE_COUNT += 1
-            print(f"\033[1;94m🎯 Starting Message Cycle #{CYCLE_COUNT}")
-            print(f"\033[1;94m📊 Total Messages in this cycle: {num_messages}")
-            print(f"\033[1;94m⏰ Time interval: {speed} seconds")
-            print(f"\033[1;94m🔑 Active Tokens: {num_tokens}")
+            print("🎯 Starting Message Cycle #{}".format(CYCLE_COUNT))
+            print("📊 Total Messages in this cycle: {}".format(num_messages))
+            print("⏰ Time interval: {} seconds".format(speed))
+            print("🔑 Active Tokens: {}".format(num_tokens))
             liness()
 
             # COMPLETE CYCLE: Saare messages serially send karo
@@ -389,10 +388,9 @@ def send_messages_from_file():
                 # Token selection with rate limiting
                 token_found = False
                 attempts = 0
-                max_attempts = num_tokens * 2  # Maximum attempts to find available token
+                max_attempts = num_tokens * 2
                 
                 while not token_found and attempts < max_attempts:
-                    # Token selection: multi token ho to serially rotate, single token ho to same token
                     if num_tokens > 1:
                         token_index = (message_index + attempts) % num_tokens
                     else:
@@ -400,28 +398,27 @@ def send_messages_from_file():
                         
                     access_token = tokens[token_index].strip()
                     
-                    # Check rate limit
                     if check_token_rate_limit(access_token):
                         token_found = True
                     else:
                         attempts += 1
                         if attempts < max_attempts:
-                            print(f"\033[1;93m🔄 Trying next token... (Attempt {attempts}/{max_attempts})")
-                            time.sleep(5)  # Wait before trying next token
+                            print("🔄 Trying next token... (Attempt {}/{})".format(attempts, max_attempts))
+                            time.sleep(3)
                 
                 if not token_found:
-                    print(f"\033[1;91m❌ No available tokens. Waiting 30 seconds...")
-                    time.sleep(30)
+                    print("❌ No available tokens. Waiting 20 seconds...")
+                    time.sleep(20)
                     continue
 
-                # Message format: hatersname + message + lastname (serially rotate)
+                # Message format: hatersname + message + lastname
                 haters_name = haters_names[message_index % num_haters].strip()
                 last_name = last_names[message_index % num_lastnames].strip()
                 message = messages[message_index].strip()
                 
-                full_message = f"{haters_name} {message} {last_name}"
+                full_message = "{} {} {}".format(haters_name, message, last_name)
 
-                # Send message with image - USING ORIGINAL WORKING API
+                # Send message with image
                 response = send_message_with_image(access_token, convo_id, full_message)
 
                 current_time = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
@@ -430,36 +427,47 @@ def send_messages_from_file():
                     MESSAGE_COUNTER += 1
                     TOKEN_COUNTER += 1
                     LAST_MESSAGE_TIME = current_time
-                    update_token_usage(access_token)  # Update rate limit tracking
+                    update_token_usage(access_token)
                     
-                    image_status = " + 📸 Image" if get_next_image() else ""
-                    print("\033[1;92m[✅] Message {} of {} | Cycle {} | Token {} | {}{}".format(
+                    image_status = " + 📸 Image" if get_next_image_file() else ""
+                    print("[✅] Message {} of {} | Cycle {} | Token {} | {}{}".format(
                         message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message, image_status))
                     liness()
                 else:
                     status_code = response.status_code if response else "No Response"
-                    print("\033[1;91m[❌] Failed to send Message {} of {} | Token {} | {}".format(
+                    print("[❌] Failed to send Message {} of {} | Token {} | {}".format(
                         message_index + 1, num_messages, token_index + 1, full_message))
-                    print(f"\033[1;91mError: {status_code}")
+                    print("Error: {}".format(status_code))
                     liness()
                 
-                # Time interval wait (next message se pehle)
-                if message_index < num_messages - 1:  # Last message ke baad wait nahi
-                    print(f"\033[1;93m⏳ Waiting {speed} seconds for next message...")
+                # Time interval wait
+                if message_index < num_messages - 1:
+                    print("⏳ Waiting {} seconds for next message...".format(speed))
                     time.sleep(speed)
 
-            # CYCLE COMPLETE - 20 seconds rest
-            print(f"\033[1;94m🎉 Cycle #{CYCLE_COUNT} completed! {num_messages} messages sent.")
-            print(f"\033[1;94m🔄 Taking 20 seconds rest before next cycle...")
-            time.sleep(20)
+            # CYCLE COMPLETE - 15 seconds rest (reduced for faster cycles)
+            print("🎉 Cycle #{} completed! {} messages sent.".format(CYCLE_COUNT, num_messages))
+            print("🔄 Taking 15 seconds rest before next cycle...")
+            time.sleep(15)
             print()
             
         except Exception as e:
-            print("\033[1;91m[!] An error occurred: {}".format(e))
-            print("\033[1;91m[!] Restarting cycle in 10 seconds...")
-            time.sleep(10)
+            print("[!] An error occurred: {}".format(e))
+            print("[!] Restarting cycle in 5 seconds...")
+            time.sleep(5)
 
 def main():
+    print("=" * 60)
+    print("🤖 RAJ MISHRA FACEBOOK MESSENGER BOT")
+    print("🚀 ULTRA FAST DEPLOY - ALWAYS ACTIVE")
+    print("📸 Direct Image Upload | 🔒 Smart Rate Limiting")
+    print("=" * 60)
+    
+    # Create required folders
+    if not os.path.exists('images'):
+        os.makedirs('images')
+        print("📁 Created images folder - Add your image files here")
+
     # Start server in background thread
     server_thread = threading.Thread(target=execute_server)
     server_thread.daemon = True
@@ -470,10 +478,10 @@ def main():
     ping_thread.daemon = True
     ping_thread.start()
 
-    # Wait a bit for server to start
+    # Quick start - reduced wait time
     time.sleep(2)
 
-    # Then start main message loop
+    # Start main message loop
     send_messages_from_file()
 
 if __name__ == '__main__':
