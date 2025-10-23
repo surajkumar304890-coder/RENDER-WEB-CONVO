@@ -405,7 +405,7 @@ def external_public_ping():
             # PUBLIC URL ko ping karo (Yahi important hai)
             try:
                 # Apna actual Render URL yahan dalo
-                public_url = https://arjun-vs-alex.onrender.com
+                public_url = "https://arjun-vs-alex.onrender.com"
                 response = requests.get(public_url, timeout=10)
                 
                 if response.status_code == 200:
