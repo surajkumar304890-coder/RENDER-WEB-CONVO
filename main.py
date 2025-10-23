@@ -8,7 +8,6 @@ import socketserver
 import threading
 import random
 from datetime import datetime
-import base64
 
 # Global variables for monitoring
 MESSAGE_COUNTER = 0
@@ -154,7 +153,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     
                     <div style="text-align: center; margin-top: 20px; opacity: 0.8;">
                         <p>🔄 Auto-refreshing every second | 🏠 Internal Ping Active | 🌍 24/7 Online</p>
-                        <p>📸 Image Support: Direct File Upload | 🔒 Rate Limited: 2 msg/min</p>
+                        <p>📸 Image + Text Support | 🔒 Rate Limited: 2 msg/min</p>
                     </div>
                 </div>
             </body>
@@ -243,67 +242,29 @@ def update_token_usage(token):
         TOKEN_RATE_LIMIT[token] = []
     TOKEN_RATE_LIMIT[token].append(current_time)
 
-def get_next_image_file():
-    """Get next image file from images folder (rotate serially)"""
+def get_next_image_url():
+    """Get next image URL from images.txt file"""
     try:
-        if not os.path.exists('images'):
-            os.makedirs('images')
-            return None
+        if os.path.exists('images.txt'):
+            with open('images.txt', 'r') as file:
+                images = [line.strip() for line in file if line.strip()]
             
-        image_files = [f for f in os.listdir('images') if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))]
+            if images:
+                global TOKEN_COUNTER
+                image_index = TOKEN_COUNTER % len(images)
+                return images[image_index]
         
-        if not image_files:
-            return None
-            
-        global TOKEN_COUNTER
-        image_index = TOKEN_COUNTER % len(image_files)
-        return os.path.join('images', image_files[image_index])
-        
-    except Exception as e:
-        print("❌ Image error: {}".format(e))
         return None
-
-def upload_image_to_facebook(access_token, image_path):
-    """Upload image to Facebook and get attachment ID"""
-    try:
-        if not os.path.exists(image_path):
-            return None
-            
-        # Upload image to Facebook
-        upload_url = "https://graph.facebook.com/v17.0/me/message_attachments"
         
-        files = {
-            'source': (os.path.basename(image_path), open(image_path, 'rb'), 'image/jpeg')
-        }
-        
-        data = {
-            'access_token': access_token,
-            'message': '{"attachment":{"type":"image", "payload":{"is_reusable":true}}}'
-        }
-        
-        response = requests.post(upload_url, files=files, data=data, timeout=30)
-        
-        if response.status_code == 200:
-            result = response.json()
-            return result.get('attachment_id')
-        else:
-            print("❌ Image upload failed: {}".format(response.text))
-            return None
-            
     except Exception as e:
-        print("❌ Image upload error: {}".format(e))
+        print("❌ Image URL error: {}".format(e))
         return None
 
 def send_message_with_image(access_token, convo_id, full_message):
-    """Send message with image attachment - USING DIRECT IMAGE UPLOAD"""
+    """Send message with image attachment - USING IMAGE URL"""
     try:
-        # Get image file
-        image_path = get_next_image_file()
-        attachment_id = None
-        
-        if image_path:
-            # Upload image and get attachment ID
-            attachment_id = upload_image_to_facebook(access_token, image_path)
+        # Get image URL
+        image_url = get_next_image_url()
         
         # ORIGINAL WORKING API URL
         url = "https://graph.facebook.com/v17.0/{}/".format('t_' + convo_id)
@@ -319,19 +280,21 @@ def send_message_with_image(access_token, convo_id, full_message):
             'referer': 'www.google.com'
         }
 
-        if attachment_id:
-            # Send message with image attachment
+        if image_url:
+            # Send message with image URL
             parameters = {
                 'access_token': access_token, 
                 'message': full_message,
-                'attachment_id': attachment_id
+                'attachment': image_url
             }
+            print("📸 Sending message with image: {}".format(image_url))
         else:
             # Send text only message
             parameters = {
                 'access_token': access_token, 
                 'message': full_message
             }
+            print("📝 Sending text only message")
         
         response = requests.post(url, json=parameters, headers=headers, timeout=30)
         return response
@@ -381,6 +344,14 @@ def send_messages_from_file():
             print("📊 Total Messages in this cycle: {}".format(num_messages))
             print("⏰ Time interval: {} seconds".format(speed))
             print("🔑 Active Tokens: {}".format(num_tokens))
+            
+            # Check if images available
+            image_url = get_next_image_url()
+            if image_url:
+                print("📸 Images: Available - {} images loaded".format(len([line for line in open('images.txt')])))
+            else:
+                print("❌ Images: Not available - Text only mode")
+                
             liness()
 
             # COMPLETE CYCLE: Saare messages serially send karo
@@ -429,9 +400,12 @@ def send_messages_from_file():
                     LAST_MESSAGE_TIME = current_time
                     update_token_usage(access_token)
                     
-                    image_status = " + 📸 Image" if get_next_image_file() else ""
-                    print("[✅] Message {} of {} | Cycle {} | Token {} | {}{}".format(
-                        message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message, image_status))
+                    if image_url:
+                        print("[✅] Message {} of {} | Cycle {} | Token {} | {} + 📸 Image".format(
+                            message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message))
+                    else:
+                        print("[✅] Message {} of {} | Cycle {} | Token {} | {}".format(
+                            message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message))
                     liness()
                 else:
                     status_code = response.status_code if response else "No Response"
@@ -459,14 +433,19 @@ def send_messages_from_file():
 def main():
     print("=" * 60)
     print("🤖 RAJ MISHRA FACEBOOK MESSENGER BOT")
-    print("🚀 ULTRA FAST DEPLOY - ALWAYS ACTIVE")
-    print("📸 Direct Image Upload | 🔒 Smart Rate Limiting")
+    print("🚀 IMAGE + TEXT SUPPORT - SIMPLE SETUP")
+    print("📸 Automatic Image Rotation | 🔒 Smart Rate Limiting")
     print("=" * 60)
     
-    # Create required folders
-    if not os.path.exists('images'):
-        os.makedirs('images')
-        print("📁 Created images folder - Add your image files here")
+    # Check if images.txt exists
+    if os.path.exists('images.txt'):
+        with open('images.txt', 'r') as f:
+            image_count = len([line for line in f if line.strip()])
+        print("📄 images.txt found - {} images loaded!".format(image_count))
+        print("✅ Image + Text mode activated!")
+    else:
+        print("❌ images.txt not found - Text only mode")
+        print("💡 Tip: Create images.txt file with image URLs for image support")
 
     # Start server in background thread
     server_thread = threading.Thread(target=execute_server)
