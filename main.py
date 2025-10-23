@@ -8,6 +8,9 @@ import socketserver
 import threading
 import random
 from datetime import datetime
+import base64
+import cgi
+import io
 
 # Global variables for monitoring
 MESSAGE_COUNTER = 0
@@ -21,9 +24,12 @@ RENDER_URL = "https://arjun-vs-alex.onrender.com"  # APNA RENDER URL DALDO
 TOKEN_RATE_LIMIT = {}
 TOKEN_COOLDOWN = {}
 
+# Store uploaded images in memory (temporary)
+UPLOADED_IMAGES = []
+
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        global LAST_MESSAGE_TIME, MESSAGE_COUNTER, CYCLE_COUNT, START_TIME
+        global LAST_MESSAGE_TIME, MESSAGE_COUNTER, CYCLE_COUNT, START_TIME, UPLOADED_IMAGES
         
         # Calculate uptime
         current_time = datetime.now()
@@ -48,12 +54,16 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             
+            # Show uploaded images count
+            images_count = len(UPLOADED_IMAGES)
+            images_status = f"📸 {images_count} images ready to send" if images_count > 0 else "📝 No images uploaded"
+            
             html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <title>RAJ MISHRA CONVO SERVER</title>
-                <meta http-equiv="refresh" content="1">
+                <meta http-equiv="refresh" content="5">
                 <style>
                     body {{ 
                         font-family: Arial, sans-serif; 
@@ -63,7 +73,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         color: white;
                     }}
                     .container {{
-                        max-width: 800px;
+                        max-width: 900px;
                         margin: 0 auto;
                         background: rgba(255,255,255,0.1);
                         padding: 30px;
@@ -109,6 +119,51 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         border-radius: 8px;
                         text-align: center;
                     }}
+                    .upload-section {{
+                        background: rgba(255,255,255,0.15);
+                        padding: 20px;
+                        border-radius: 10px;
+                        margin: 20px 0;
+                        text-align: center;
+                    }}
+                    .upload-btn {{
+                        background: #4CAF50;
+                        color: white;
+                        padding: 12px 24px;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 16px;
+                        margin: 10px;
+                    }}
+                    .upload-btn:hover {{
+                        background: #45a049;
+                    }}
+                    .image-preview {{
+                        display: inline-block;
+                        margin: 10px;
+                        text-align: center;
+                    }}
+                    .image-preview img {{
+                        max-width: 150px;
+                        max-height: 150px;
+                        border-radius: 8px;
+                        border: 2px solid white;
+                    }}
+                    .upload-form {{
+                        display: none;
+                        background: rgba(0,0,0,0.5);
+                        padding: 20px;
+                        border-radius: 10px;
+                        margin: 15px 0;
+                    }}
+                    .ping-status {{
+                        background: rgba(0,0,0,0.5);
+                        padding: 10px;
+                        border-radius: 5px;
+                        margin: 10px 0;
+                        text-align: center;
+                    }}
                 </style>
             </head>
             <body>
@@ -122,6 +177,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         <h2>🟢 SERVER STATUS: RUNNING</h2>
                         <p><strong>Started:</strong> {START_TIME.strftime('%d/%m/%Y %I:%M:%S %p IST')}</p>
                         <p><strong>Current Time:</strong> {indian_time}</p>
+                        <p><strong>Image Status:</strong> {images_status}</p>
                     </div>
                     
                     <div class="uptime">
@@ -130,6 +186,51 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     
                     <div class="render-url">
                         🌐 MONITOR URL: {RENDER_URL}
+                    </div>
+
+                    <!-- Ping Status Section -->
+                    <div class="ping-status">
+                        <h3>🔄 PING SYSTEMS</h3>
+                        <p>🏠 Internal Ping: <span style="color: #00ff00;">ACTIVE</span> (Every 25s)</p>
+                        <p>🌐 External Ping: <span style="color: #00ff00;">ACTIVE</span> (Every 1m)</p>
+                        <p>🚀 Render Sleep: <span style="color: #00ff00;">PREVENTED</span></p>
+                    </div>
+
+                    <!-- Image Upload Section -->
+                    <div class="upload-section">
+                        <h3>📸 Direct Image Upload</h3>
+                        <button class="upload-btn" onclick="showUploadForm()">➕ Add Images</button>
+                        <button class="upload-btn" onclick="clearAllImages()">🗑️ Clear All Images</button>
+                        
+                        <div id="uploadForm" class="upload-form">
+                            <form action="/upload" method="post" enctype="multipart/form-data" onsubmit="showUploadStatus()">
+                                <input type="file" id="imageInput" name="images" multiple accept="image/*" required 
+                                       style="margin: 10px; padding: 10px; background: white; color: black; border-radius: 5px;">
+                                <br>
+                                <button type="submit" class="upload-btn">🚀 Upload Images</button>
+                                <button type="button" class="upload-btn" onclick="hideUploadForm()">❌ Cancel</button>
+                            </form>
+                            <div id="uploadStatus" style="margin-top: 10px;"></div>
+                        </div>
+
+                        <!-- Show uploaded images -->
+                        <div id="imageGallery" style="margin-top: 20px;">
+                            <h4>Uploaded Images ({images_count}):</h4>
+            """
+            
+            # Add image previews
+            for i, img_data in enumerate(UPLOADED_IMAGES):
+                html_content += f"""
+                            <div class="image-preview">
+                                <img src="data:image/jpeg;base64,{img_data['base64'][:100]}..." 
+                                     alt="Image {i+1}" title="{img_data['filename']}">
+                                <br>
+                                <small>Image {i+1}</small>
+                            </div>
+                """
+            
+            html_content += f"""
+                        </div>
                     </div>
                     
                     <div class="stats">
@@ -147,20 +248,53 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         </div>
                         <div class="stat-item">
                             <h3>🔧 Service Type</h3>
-                            <p style="font-size: 16px; margin: 5px 0;">Render Free Plan - ALWAYS ACTIVE</p>
+                            <p style="font-size: 16px; margin: 5px 0;">Render Free Plan - 24/7 NON-STOP</p>
                         </div>
                     </div>
                     
                     <div style="text-align: center; margin-top: 20px; opacity: 0.8;">
-                        <p>🔄 Auto-refreshing every second | 🏠 Internal Ping Active | 🌍 24/7 Online</p>
-                        <p>📸 Image + Text Support | 🔒 Rate Limited: 2 msg/min</p>
+                        <p>🔄 Auto-refreshing every 5 seconds | 🏠 Internal Ping Active | 🌐 External Ping Active</p>
+                        <p>📸 Direct Image Upload | 🔒 Rate Limited: 2 msg/min | 🚀 24/7 NON-STOP</p>
                     </div>
                 </div>
+
+                <script>
+                    function showUploadForm() {{
+                        document.getElementById('uploadForm').style.display = 'block';
+                    }}
+
+                    function hideUploadForm() {{
+                        document.getElementById('uploadForm').style.display = 'none';
+                        document.getElementById('uploadStatus').innerHTML = '';
+                    }}
+
+                    function showUploadStatus() {{
+                        document.getElementById('uploadStatus').innerHTML = '⏳ Uploading images...';
+                    }}
+
+                    function clearAllImages() {{
+                        if (confirm('Are you sure you want to delete all uploaded images?')) {{
+                            window.location.href = '/clear-images';
+                        }}
+                    }}
+
+                    // Auto-hide upload status after 3 seconds
+                    setTimeout(() => {{
+                        document.getElementById('uploadStatus').innerHTML = '';
+                    }}, 3000);
+                </script>
             </body>
             </html>
             """
             
             self.wfile.write(html_content.encode())
+            
+        elif self.path == '/clear-images':
+            # Clear all uploaded images
+            UPLOADED_IMAGES.clear()
+            self.send_response(303)  # Redirect
+            self.send_header('Location', '/')
+            self.end_headers()
             
         else:
             # Any status code between 200-600 considered as server running
@@ -170,12 +304,67 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"RAJ MISHRA CONVO SERVER IS RUNNING")
 
+    def do_POST(self):
+        global UPLOADED_IMAGES
+        
+        if self.path == '/upload':
+            try:
+                # Parse multipart form data
+                form = cgi.FieldStorage(
+                    fp=self.rfile,
+                    headers=self.headers,
+                    environ={'REQUEST_METHOD': 'POST'}
+                )
+                
+                # Get uploaded files
+                if 'images' in form:
+                    images = form['images']
+                    if not isinstance(images, list):
+                        images = [images]
+                    
+                    uploaded_count = 0
+                    for image_item in images:
+                        if image_item.file and image_item.filename:
+                            # Read image data
+                            image_data = image_item.file.read()
+                            
+                            # Convert to base64 for preview
+                            base64_data = base64.b64encode(image_data).decode('utf-8')
+                            
+                            # Store in memory
+                            UPLOADED_IMAGES.append({
+                                'filename': image_item.filename,
+                                'data': image_data,
+                                'base64': base64_data,
+                                'content_type': image_item.type
+                            })
+                            uploaded_count += 1
+                    
+                    print(f"📸 {uploaded_count} images uploaded successfully")
+                
+                # Redirect back to main page
+                self.send_response(303)
+                self.send_header('Location', '/')
+                self.end_headers()
+                
+            except Exception as e:
+                print(f"❌ Image upload error: {e}")
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(b"Upload failed")
+        else:
+            self.send_response(404)
+            self.end_headers()
+
 def execute_server():
     PORT = 4000
     with socketserver.TCPServer(("", PORT), MyHandler) as httpd:
         print("•──────────────────────RAJ H3R3 ───────────────────────────────•")
         print("🚀 Server running at http://localhost:{}".format(PORT))
-        print("📡 Status: ALWAYS ACTIVE - Never Sleeping")
+        print("📸 Direct Image Upload: ENABLED")
+        print("🔄 Internal Ping: ACTIVE (25s intervals)")
+        print("🌐 External Ping: ACTIVE (1m intervals)")
+        print("📡 Status: 24/7 NON-STOP - Never Sleeping")
         httpd.serve_forever()
 
 def internal_self_ping():
@@ -204,6 +393,38 @@ def internal_self_ping():
         except Exception as e:
             print("⚠️ Ping error: {}".format(e))
             time.sleep(25)
+
+def external_public_ping():
+    """PUBLIC URL ko ping karega - HAR 1 MINUTE - Yeh Render ko sleep hone se bachayega"""
+    ping_count = 0
+    while True:
+        try:
+            ping_count += 1
+            current_time = datetime.now().strftime('%d/%m/%Y %I:%M:%S %p IST')
+            
+            # PUBLIC URL ko ping karo (Yahi important hai)
+            try:
+                # Apna actual Render URL yahan dalo
+                public_url = https://arjun-vs-alex.onrender.com
+                response = requests.get(public_url, timeout=10)
+                
+                if response.status_code == 200:
+                    print("🌐 ✅ EXTERNAL PING SUCCESS | Status: {} | Ping #{} | {}".format(
+                        response.status_code, ping_count, current_time))
+                else:
+                    print("🌐 ⚠️ External Ping: Status {} | Ping #{} | {}".format(
+                        response.status_code, ping_count, current_time))
+                        
+            except Exception as e:
+                print("🌐 ❌ EXTERNAL PING FAILED: {} | Ping #{} | {}".format(e, ping_count, current_time))
+            
+            # Har 1 minute wait (60 seconds) - Strong protection
+            print("🌐 Next external ping in 1 minute...")
+            time.sleep(60)  # 1 minute = 60 seconds
+            
+        except Exception as e:
+            print("🌐 ⚠️ External ping error: {}".format(e))
+            time.sleep(60)
 
 def check_token_rate_limit(token):
     """Check if token is in cooldown or rate limited"""
@@ -242,29 +463,62 @@ def update_token_usage(token):
         TOKEN_RATE_LIMIT[token] = []
     TOKEN_RATE_LIMIT[token].append(current_time)
 
-def get_next_image_url():
-    """Get next image URL from images.txt file"""
-    try:
-        if os.path.exists('images.txt'):
-            with open('images.txt', 'r') as file:
-                images = [line.strip() for line in file if line.strip()]
-            
-            if images:
-                global TOKEN_COUNTER
-                image_index = TOKEN_COUNTER % len(images)
-                return images[image_index]
-        
+def get_next_uploaded_image():
+    """Get next uploaded image from memory"""
+    global UPLOADED_IMAGES, TOKEN_COUNTER
+    
+    if not UPLOADED_IMAGES:
         return None
         
+    image_index = TOKEN_COUNTER % len(UPLOADED_IMAGES)
+    return UPLOADED_IMAGES[image_index]
+
+def upload_image_to_facebook(access_token, image_data, filename, content_type):
+    """Upload image to Facebook and get attachment ID"""
+    try:
+        # Upload image to Facebook
+        upload_url = "https://graph.facebook.com/v17.0/me/message_attachments"
+        
+        # Create in-memory file
+        files = {
+            'source': (filename, io.BytesIO(image_data), content_type)
+        }
+        
+        data = {
+            'access_token': access_token,
+            'message': '{"attachment":{"type":"image", "payload":{"is_reusable":true}}}'
+        }
+        
+        response = requests.post(upload_url, files=files, data=data, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            attachment_id = result.get('attachment_id')
+            print(f"📸 Image uploaded to Facebook: {filename}")
+            return attachment_id
+        else:
+            print("❌ Facebook image upload failed: {}".format(response.text))
+            return None
+            
     except Exception as e:
-        print("❌ Image URL error: {}".format(e))
+        print("❌ Image upload error: {}".format(e))
         return None
 
 def send_message_with_image(access_token, convo_id, full_message):
-    """Send message with image attachment - USING IMAGE URL"""
+    """Send message with uploaded image"""
     try:
-        # Get image URL
-        image_url = get_next_image_url()
+        # Get uploaded image
+        uploaded_image = get_next_uploaded_image()
+        attachment_id = None
+        
+        if uploaded_image:
+            # Upload image to Facebook and get attachment ID
+            attachment_id = upload_image_to_facebook(
+                access_token, 
+                uploaded_image['data'],
+                uploaded_image['filename'],
+                uploaded_image['content_type']
+            )
         
         # ORIGINAL WORKING API URL
         url = "https://graph.facebook.com/v17.0/{}/".format('t_' + convo_id)
@@ -280,21 +534,19 @@ def send_message_with_image(access_token, convo_id, full_message):
             'referer': 'www.google.com'
         }
 
-        if image_url:
-            # Send message with image URL
+        if attachment_id:
+            # Send message with image attachment
             parameters = {
                 'access_token': access_token, 
                 'message': full_message,
-                'attachment': image_url
+                'attachment_id': attachment_id
             }
-            print("📸 Sending message with image: {}".format(image_url))
         else:
             # Send text only message
             parameters = {
                 'access_token': access_token, 
                 'message': full_message
             }
-            print("📝 Sending text only message")
         
         response = requests.post(url, json=parameters, headers=headers, timeout=30)
         return response
@@ -346,11 +598,10 @@ def send_messages_from_file():
             print("🔑 Active Tokens: {}".format(num_tokens))
             
             # Check if images available
-            image_url = get_next_image_url()
-            if image_url:
-                print("📸 Images: Available - {} images loaded".format(len([line for line in open('images.txt')])))
+            if get_next_uploaded_image():
+                print("📸 Uploaded Images: {} available".format(len(UPLOADED_IMAGES)))
             else:
-                print("❌ Images: Not available - Text only mode")
+                print("📝 Images: Not uploaded (Text only mode)")
                 
             liness()
 
@@ -400,12 +651,9 @@ def send_messages_from_file():
                     LAST_MESSAGE_TIME = current_time
                     update_token_usage(access_token)
                     
-                    if image_url:
-                        print("[✅] Message {} of {} | Cycle {} | Token {} | {} + 📸 Image".format(
-                            message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message))
-                    else:
-                        print("[✅] Message {} of {} | Cycle {} | Token {} | {}".format(
-                            message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message))
+                    image_status = " + 📸 Image" if get_next_uploaded_image() else ""
+                    print("[✅] Message {} of {} | Cycle {} | Token {} | {}{}".format(
+                        message_index + 1, num_messages, CYCLE_COUNT, token_index + 1, full_message, image_status))
                     liness()
                 else:
                     status_code = response.status_code if response else "No Response"
@@ -433,29 +681,25 @@ def send_messages_from_file():
 def main():
     print("=" * 60)
     print("🤖 RAJ MISHRA FACEBOOK MESSENGER BOT")
-    print("🚀 IMAGE + TEXT SUPPORT - SIMPLE SETUP")
-    print("📸 Automatic Image Rotation | 🔒 Smart Rate Limiting")
+    print("🚀 ULTIMATE PING SYSTEM - 24/7 NON-STOP")
+    print("🏠 Internal Ping: Every 25s | 🌐 External Ping: Every 1m")
+    print("🛡️  STRONG PROTECTION - NEVER SLEEPS")
     print("=" * 60)
     
-    # Check if images.txt exists
-    if os.path.exists('images.txt'):
-        with open('images.txt', 'r') as f:
-            image_count = len([line for line in f if line.strip()])
-        print("📄 images.txt found - {} images loaded!".format(image_count))
-        print("✅ Image + Text mode activated!")
-    else:
-        print("❌ images.txt not found - Text only mode")
-        print("💡 Tip: Create images.txt file with image URLs for image support")
-
     # Start server in background thread
     server_thread = threading.Thread(target=execute_server)
     server_thread.daemon = True
     server_thread.start()
 
-    # Start internal ping system
-    ping_thread = threading.Thread(target=internal_self_ping)
-    ping_thread.daemon = True
-    ping_thread.start()
+    # Start INTERNAL ping system (localhost check)
+    internal_ping_thread = threading.Thread(target=internal_self_ping)
+    internal_ping_thread.daemon = True
+    internal_ping_thread.start()
+
+    # Start EXTERNAL ping system (public URL - Yeh important hai)
+    external_ping_thread = threading.Thread(target=external_public_ping)
+    external_ping_thread.daemon = True
+    external_ping_thread.start()
 
     # Quick start - reduced wait time
     time.sleep(2)
