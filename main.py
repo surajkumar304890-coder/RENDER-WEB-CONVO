@@ -9,7 +9,7 @@ import threading
 import random
 from datetime import datetime
 import base64
-import cgi
+
 import io
 
 # Global variables for monitoring
